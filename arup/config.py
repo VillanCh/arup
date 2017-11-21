@@ -167,3 +167,8 @@ class ArupConfig(object):
     def pika_publisher_exchanges(self):
         """"""
         return list(self.config.get(_KW_PUBLISHER).get(''))
+    
+    def save(self, file):
+        """"""
+        with open(file, mode='w+') as fp:
+            yaml.dump(self.config, fp)
