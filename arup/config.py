@@ -14,6 +14,7 @@ _KW_CREDENTIAL = 'credential'
 _KW_CONNECTION = 'connection'
 _KW_CONSUMER = 'consumer'
 _KW_PUBLISHER = 'publisher'
+_KW_connection_retry_interval = 'connection_retry_interval'
 
 # connection param config
 #
@@ -97,6 +98,7 @@ _DEFAULT_CONFIG_TABLE = {
     _KW_CONSUMER: _DEFAULT_CONSUMER_CONFIG,
     _KW_CREDENTIAL: _DEFAULT_CREDENTIAL_CONFIG,
     _KW_CREDENTIAL: _DEFAULT_PUBLISHER_CONFIG,
+    _KW_connection_retry_interval: 1
 }
 
 
@@ -121,7 +123,7 @@ class ArupConfig(object):
         self.config.update(config)
     
     @classmethod
-    def load_from_yaml_config(self, config_file):
+    def load_from_yaml_config(cls, config_file):
         """"""
         assert os.path.exists(config_file), '{} is not a valid config file.'.\
                format(config_file)
@@ -166,7 +168,12 @@ class ArupConfig(object):
     @property
     def pika_publisher_exchanges(self):
         """"""
-        return list(self.config.get(_KW_PUBLISHER).get(''))
+        return dict(self.config.get(_KW_PUBLISHER).get('exchanges'))
+    
+    @property
+    def connection_retry_interval(self):
+        """"""
+        return self.config.get(_KW_connection_retry_interval, 1)
     
     def save(self, file):
         """"""
