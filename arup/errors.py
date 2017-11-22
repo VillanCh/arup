@@ -24,5 +24,5 @@ class MessageGetTimeoutError(ConsumerError):
 class AckError(ConsumerError):
     """"""
 
-
-
+class NackError(ConsumerError):
+    """"""

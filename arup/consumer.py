@@ -14,7 +14,8 @@ import pika
 
 from .config import ArupConfig
 from .common import Connectable
-from .errors import ConsumerError, MessageGetTimeoutError, AckError
+from .errors import ConsumerError, MessageGetTimeoutError, \
+     AckError, NackError
 
 class Consumer(Connectable):
     """"""
@@ -154,6 +155,21 @@ class Consumer(Connectable):
     
     def ack(self, frame_or_dtag, multiple=False):
         """"""
+        dtag = self._get_delivery_tag(frame_or_dtag)
+        
+        if dtag is None:
+            raise ValueError('the message ack error: {}'.format(frame_or_dtag))
+        else:
+            try:
+                self.channel.basic_ack(dtag, multiple=multiple)
+            except:
+                msg = traceback.format_exc()
+                warnings.warn(msg)                
+                raise AckError('error occured when ack the message: {}'.\
+                               format(frame_or_dtag))
+    
+    def _get_delivery_tag(self, frame_or_dtag):
+        """"""
         dtag = None
         if isinstance(frame_or_dtag, int):
             dtag = frame_or_dtag
@@ -165,13 +181,21 @@ class Consumer(Connectable):
                 warnings.warn('getting the delivery_tag error: {}'.format(msg))
                 dtag = None
         
+        return dtag
+    
+    def nack(self, frame_or_dtag, multiple=False, requeue=True):
+        """"""
+        dtag = self._get_delivery_tag(frame_or_dtag)
+        
         if dtag is None:
-            raise AckError('the message ack error: {}'.format(frame_or_dtag))
+            raise ValueError('the message ack error: {}'.format(frame_or_dtag))
         else:
             try:
-                self.channel.basic_ack(dtag, multiple=multiple)
+                self.channel.basic_nack(dtag, multiple=multiple,
+                                        requeue=requeue)
             except:
                 msg = traceback.format_exc()
                 warnings.warn(msg)                
-                raise AckError('error occured when ack the message: {}'.\
+                raise NackError('error occured when nack the message: {}'.\
                                format(frame_or_dtag))
+    
