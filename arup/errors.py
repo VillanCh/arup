@@ -26,3 +26,6 @@ class AckError(ConsumerError):
 
 class NackError(ConsumerError):
     """"""
+    
+class RecoverNackMessageError(ConsumerError):
+    """"""

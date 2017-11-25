@@ -15,7 +15,7 @@ import pika
 from .config import ArupConfig
 from .common import Connectable
 from .errors import ConsumerError, MessageGetTimeoutError, \
-     AckError, NackError
+     AckError, NackError, RecoverNackMessageError
 
 class Consumer(Connectable):
     """"""
@@ -198,4 +198,13 @@ class Consumer(Connectable):
                 warnings.warn(msg)                
                 raise NackError('error occured when nack the message: {}'.\
                                format(frame_or_dtag))
-    
+        
+    def recover_all_nack_message(self, requeue=False):
+        """"""
+        try:
+            self.channel.basic_recover(requeue)
+        except:
+            msg = traceback.format_exc()
+            warnings.warn(msg)
+            raise RecoverNackMessageError('error occured when recovering all nack messages. \n\n{}'.\
+                            format(msg))
