@@ -9,23 +9,24 @@ def get_git_revision_short_hash():
 
 
 setup(
-    name='localforward',
+    name='arupy',
     # See https://www.python.org/dev/peps/pep-0440/
     version="1.{}".format(get_git_revision_short_hash()),
-    description='Local Socks5 Server and u can hook data.',
+    description='Arupy - RabbitMQ Client APP',
     author='v1ll4n',
     author_email='v1ll4n@qq.com',
-    url='http://localforward.com',
+    url='http://.com',
     install_requires=[
+        "pyyaml",
         "pika",
         "colorama",
     ],
     packages=find_packages(),
     zip_safe=False,
     include_package_data=True,
-    entry_points={
-        'console_scripts': [
-            'localforward=localforward:cli',
-        ],
-    },
+    # entry_points={
+    # 'console_scripts': [
+    # 'localforward=localforward:cli',
+    # ],
+    # },
 )
