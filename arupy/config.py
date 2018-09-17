@@ -69,7 +69,10 @@ def parse_mq_parameters_from_options(options):
 
 def parse_mq_parameters_from_file(yaml_config):
     with open(yaml_config) as fp:
-        obj = yaml.load(fp.read())
+        return parse_mq_parameters_from_string(fp.read())
+
+def parse_mq_parameters_from_string(string_config):
+    obj = yaml.load(string_config)
     creds = pika.PlainCredentials(**obj["rabbit_credentials"])
     obj["rabbit_connection"]['port'] = int(obj["rabbit_connection"].get('port', 5672))
     return pika.ConnectionParameters(credentials=creds, **obj["rabbit_connection"])
