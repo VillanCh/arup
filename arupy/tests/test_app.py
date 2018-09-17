@@ -21,7 +21,7 @@ class Consumer(app.ArupyConsumer):
 
     queue_name = "arupy-test-app"
 
-    def on_channel_creaetd(self, channel: BlockingChannel):
+    def on_channel_created(self, channel: BlockingChannel):
         channel.exchange_declare("arupy", "direct")
         channel.queue_declare(queue=self.queue_name)
         channel.queue_bind(self.queue_name, "arupy", "test_app")

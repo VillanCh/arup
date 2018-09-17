@@ -89,7 +89,7 @@ class Arupy(threading.Thread):
 
     def initial_consumers(self):
         def _(qname, consumer):
-            consumer.on_channel_creaetd(self.channel)
+            consumer.on_channel_created(self.channel)
             logger.info("set consumer for queue name: {}".format(qname))
             self.channel.basic_consume(consumer.handle, qname, consumer_tag=qname)
         [_(qname, consumer) for (qname, consumer) in self.consumers.items()]
@@ -135,7 +135,7 @@ class ArupyConsumer(object):
         """Constructor"""
         self.app = app
 
-    def on_channel_creaetd(self, channel):
+    def on_channel_created(self, channel):
         pass
 
     def handle(self):
