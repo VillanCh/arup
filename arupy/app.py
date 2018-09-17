@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 # coding:utf-8
+import os
 import traceback
 import time
 import pika
 import threading
-from . import config, outils
+from . import outils
+from . import config as config_utils
 
 logger = outils.get_logger('arupy')
 
@@ -17,12 +19,19 @@ class ArupyError(Exception):
 class Arupy(threading.Thread):
     """"""
 
-    def __init__(self, configfile="config.yml"):
+    def __init__(self, config="config.yml"):
         """Constructor"""
         threading.Thread.__init__(self, name="arupy-main")
         self.daemon = True
 
-        self.pika_params = config.parse_mq_parameters_from_file(configfile)
+        if isinstance(config, str) and os.path.exists(config):
+            self.pika_params = config_utils.parse_mq_parameters_from_file(config)
+        elif isinstance(config, pika.ConnectionParameters):
+            self.pika_params = config
+        elif isinstance(config, dict):
+            self.pika_params = config_utils.parse_mq_parameters_from_dict(config)
+        else:
+            raise ValueError("Config: {} cannot be parsed".format(config))
         self.is_working = threading.Event()
         self.consumers = {}
         self.connection = None
