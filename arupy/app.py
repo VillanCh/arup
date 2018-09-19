@@ -85,8 +85,8 @@ class Arupy(threading.Thread):
         self.is_working.clear()
         logger.info("Arupy is shutdown normally.")
 
-    def add_consumer(self, consumer_kls):
-        consumer = consumer_kls(self)
+    def add_consumer(self, consumer_kls, **kwargs):
+        consumer = consumer_kls(self, **kwargs)
         if consumer.queue_name not in self.consumers:
             logger.info('consumer: {} is added.'.format(consumer_kls))
             self.consumers[consumer.queue_name] = consumer
