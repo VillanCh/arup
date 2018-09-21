@@ -147,7 +147,7 @@ class ArupyConsumer(object):
     def on_channel_created(self, channel):
         pass
 
-    def handle(self):
+    def handle(self, channel, methods, props, body: bytes):
         pass
 
 
