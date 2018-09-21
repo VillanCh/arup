@@ -12,6 +12,8 @@ from pika.adapters.blocking_connection import BlockingChannel
 
 from .. import app, outils
 
+import time
+
 logger = outils.get_logger('arupy')
 logger.setLevel(logging.INFO)
 
@@ -40,10 +42,17 @@ class AppTestCase(unittest.TestCase):
         ap.add_consumer(Consumer)
         ap.start()
 
+        time.sleep(3)
+
         publisher = ap.new_publisher()
         publisher.publish(exchange="arupy", routing_key="test_app", body="this is message from publisher")
 
+        publisher = ap.new_safe_publisher(True)
+        self.assertTrue(publisher.publish("arupy", "test_app", "this is message from safe publisher"))
+
         ap.serve_until_no_consumers()
+
+
 
 
 if __name__ == '__main__':

@@ -3,8 +3,9 @@
 import os
 import traceback
 import time
-import pika
 import threading
+import pika
+from pika import exceptions as pika_exceptions
 from . import outils
 from . import config as config_utils
 
@@ -96,11 +97,15 @@ class Arupy(threading.Thread):
     def new_publisher(self):
         return ArupyPublisher(self.pika_params)
 
+    def new_safe_publisher(self, delivery_confirm=False):
+        return ArupySafePublisher(self.pika_params, delivery_confirm)
+
     def initial_consumers(self):
         def _(qname, consumer):
             consumer.on_channel_created(self.channel)
             logger.info("set consumer for queue name: {}".format(qname))
             self.channel.basic_consume(consumer.handle, qname, consumer_tag=qname)
+
         [_(qname, consumer) for (qname, consumer) in self.consumers.items()]
 
     def serve_until_no_consumers(self):
@@ -168,3 +173,55 @@ class ArupyPublisher(object):
         self.conn.close()
 
 
+class ArupySafePublisher(object):
+    """"""
+
+    def __init__(self, pika_params, confirm=False):
+        """Constructor"""
+        self.params = pika_params
+        self._confirm = confirm
+
+        # set conn N chan for self
+        self._initial()
+
+    def _initial(self):
+        while True:
+            try:
+                self.conn = pika.BlockingConnection(self.params)
+                self.chan = self.conn.channel()
+                if self._confirm:
+                    self.chan.confirm_delivery()
+                break
+            except Exception as e:
+                logger.warn("publisher cannot connect to mq with config: {} for {}".format(
+                    self.params, e
+                ))
+                logger.info("2s later retry to connect mq")
+                time.sleep(2)
+                continue
+
+    def publish(self, exchange, routing_key, body, properties=None, mandatory=False, immediate=False):
+        while True:
+            try:
+                return self.chan.basic_publish(exchange, routing_key, body, properties, mandatory, immediate)
+            except pika_exceptions.AMQPChannelError as e:
+                self._reset_by_exception(e)
+            except pika_exceptions.ChannelError as e:
+                self._reset_by_exception(e)
+            except pika_exceptions.RecursionError as e:
+                self._reset_by_exception(e)
+            except Exception as e:
+                raise e
+
+    def close(self):
+        self.chan.close()
+        self.conn.close()
+
+    def _reset_by_exception(self, e):
+        logger.warn("reset publisher by exception: {}, retry!".format(e))
+        try:
+            self.close()
+        except Exception:
+            pass
+
+        self._initial()
