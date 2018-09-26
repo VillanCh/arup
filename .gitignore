@@ -6,3 +6,4 @@ __pycache__
 *.yml
 *.yaml
 .idea/
+.pytest_cache/
