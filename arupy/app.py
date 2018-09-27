@@ -58,9 +58,14 @@ class Arupy(threading.Thread):
             except Exception as e:
                 logger.warn("create channel failed. retry 3s later: {}".format(e))
                 if self.connection:
-                    self.connection.sleep(3)
+                    try:
+                        self.connection.sleep(3)
+                    except:
+                        self.connection = None
+                        time.sleep(3)
                 else:
                     time.sleep(3)
+                continue
 
             try:
                 logger.info("initializing consumers")
@@ -70,7 +75,9 @@ class Arupy(threading.Thread):
                 logger.warn("errors in initial consumer: {}".format(
                     traceback.format_exc()
                 ))
-                raise ArupyError()
+                self.connection = None
+                time.sleep(3)
+                # raise ArupyError()
 
             try:
                 self.channel.start_consuming()
@@ -78,6 +85,9 @@ class Arupy(threading.Thread):
                 break
             except Exception:
                 logger.warn("unexpect exit when consuming. {}".format(traceback.format_exc()))
+                time.sleep(3)
+                self.connection = None
+                continue
 
         self.is_working.clear()
         logger.info("Arupy is shutdown normally.")
