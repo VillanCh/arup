@@ -53,6 +53,7 @@ class Arupy(threading.Thread):
 
             try:
                 self.channel = self.connection.channel()
+                assert isinstance(self.channel, )
                 logger.info('arupy created a channel.')
             except:
                 logger.warn("create channel failed. retry 3s later")
@@ -79,6 +80,7 @@ class Arupy(threading.Thread):
 
             try:
                 self.channel.start_consuming()
+                self.connection.sleep(3)
                 break
             except Exception:
                 logger.warn("unexpect exit when consuming. {}".format(traceback.format_exc()))
@@ -103,7 +105,7 @@ class Arupy(threading.Thread):
     def initial_consumers(self):
         def _(qname, consumer):
             consumer.on_channel_created(self.channel)
-            logger.info("set consumer for queue name: {}".format(qname))
+            logger.info("set consumer for queue name: {} tag: {}".format(qname, qname))
             self.channel.basic_consume(consumer.handle, qname, consumer_tag=qname)
 
         [_(qname, consumer) for (qname, consumer) in self.consumers.items()]
