@@ -53,7 +53,8 @@ class Arupy(threading.Thread):
 
             try:
                 self.channel = self.connection.channel()
-                logger.info('arupy created a channel.')
+                self.channel.basic_qos(prefetch_count=1)
+                logger.info('arupy created a channel and set the qos to 1.')
             except Exception as e:
                 logger.warn("create channel failed. retry 3s later: {}".format(e))
                 if self.connection:
@@ -70,12 +71,6 @@ class Arupy(threading.Thread):
                     traceback.format_exc()
                 ))
                 raise ArupyError()
-
-            try:
-                logger.info("set qos to 1")
-                self.channel.basic_qos(prefetch_count=1)
-            except:
-                logger.warn('set qos failed.')
 
             try:
                 self.channel.start_consuming()
