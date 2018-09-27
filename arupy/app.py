@@ -54,8 +54,8 @@ class Arupy(threading.Thread):
             try:
                 self.channel = self.connection.channel()
                 logger.info('arupy created a channel.')
-            except:
-                logger.warn("create channel failed. retry 3s later")
+            except Exception as e:
+                logger.warn("create channel failed. retry 3s later: {}".format(e))
                 if self.connection:
                     self.connection.sleep(3)
                 else:
