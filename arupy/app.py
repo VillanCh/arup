@@ -217,7 +217,7 @@ class ArupySafePublisher(object):
             except pika_exceptions.RecursionError as e:
                 self._reset_by_exception(e)
             except Exception as e:
-                raise e
+                self._reset_by_exception(e)
 
     def close(self):
         self.chan.close()
