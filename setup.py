@@ -5,8 +5,10 @@ from setuptools import setup, find_packages
 
 
 def get_git_revision_short_hash():
-    return subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD'])
-
+    try:
+        return subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD'])
+    except Exception:
+        return "alpha"
 
 setup(
     name='arupy',
