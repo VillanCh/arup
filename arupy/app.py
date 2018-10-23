@@ -6,6 +6,7 @@ import time
 import threading
 import pika
 from pika import exceptions as pika_exceptions
+from pika.adapters.blocking_connection import BlockingChannel
 from . import outils
 from . import config as config_utils
 
@@ -93,12 +94,14 @@ class Arupy(threading.Thread):
         logger.info("Arupy is shutdown normally.")
 
     def add_consumer(self, consumer, **kwargs):
-        if issubclass(consumer, ArupyConsumer):
-            consumer = consumer(app=self, **kwargs)
-        elif isinstance(consumer, ArupyConsumer):
+        if isinstance(consumer, ArupyConsumer):
             consumer.bind_app(app=self)
         else:
-            raise TypeError("consumer should be subclass/subinstance of ArupyConsumer but {}".format(type(consumer)))
+            try:
+                if issubclass(consumer, ArupyConsumer):
+                    consumer = consumer(app=self, **kwargs)
+            except Exception:
+                raise TypeError("consumer should be subclass/subinstance of ArupyConsumer but {}".format(type(consumer)))
 
         if consumer.queue_name not in self.consumers:
             logger.info('consumer: {} is added.'.format(consumer))
@@ -195,6 +198,7 @@ class ArupySafePublisher(object):
         """Constructor"""
         self.params = pika_params
         self._confirm = confirm
+        self.chan: BlockingChannel = None
 
         # set conn N chan for self
         self._initial()
@@ -227,6 +231,8 @@ class ArupySafePublisher(object):
                 self._reset_by_exception(e)
             except Exception as e:
                 self._reset_by_exception(e)
+
+            time.sleep(1)
 
     def close(self):
         self.chan.close()
