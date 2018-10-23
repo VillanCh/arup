@@ -92,10 +92,16 @@ class Arupy(threading.Thread):
         self.is_working.clear()
         logger.info("Arupy is shutdown normally.")
 
-    def add_consumer(self, consumer_kls, **kwargs):
-        consumer = consumer_kls(self, **kwargs)
+    def add_consumer(self, consumer, **kwargs):
+        if issubclass(consumer, ArupyConsumer):
+            consumer = consumer(app=self, **kwargs)
+        elif isinstance(consumer, ArupyConsumer):
+            consumer.bind_app(app=self)
+        else:
+            raise TypeError("consumer should be subclass/subinstance of ArupyConsumer but {}".format(type(consumer)))
+
         if consumer.queue_name not in self.consumers:
-            logger.info('consumer: {} is added.'.format(consumer_kls))
+            logger.info('consumer: {} is added.'.format(consumer))
             self.consumers[consumer.queue_name] = consumer
         else:
             raise ValueError("the queue_name: {} is existed in consumers")
@@ -151,8 +157,11 @@ class ArupyConsumer(object):
 
     queue_name = "default"
 
-    def __init__(self, app: Arupy):
+    def __init__(self, app: Arupy = None):
         """Constructor"""
+        self.app = app
+
+    def bind_app(self, app: Arupy):
         self.app = app
 
     def on_channel_created(self, channel):
