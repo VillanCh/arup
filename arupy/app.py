@@ -37,6 +37,7 @@ class Arupy(object):
         self.is_working = threading.Event()
         self.consumers = {}
         self.connection = None
+        self.channel = None
 
     def start(self):
         print("run arupy")
@@ -47,6 +48,23 @@ class Arupy(object):
     def join(self, timeout=None):
         return self._mainthread.join(timeout)
 
+    def _closeNclear_connNchan_whatever(self):
+        try:
+            if self.channel:
+                self.channel.close()
+        except Exception:
+            pass
+        finally:
+            self.channel = None
+
+        try:
+            if self.connection:
+                self.connection.close()
+        except Exception:
+            pass
+        finally:
+            self.connection = None
+
     def run(self):
         if not self.is_working.is_set():
             self.is_working.set()
@@ -54,13 +72,7 @@ class Arupy(object):
             logger.warn("the Arupy is running already.")
             return
 
-        if self.channel:
-            self.channel.close()
-        if self.connection:
-            self.connection.close()
-
-        self.connection = None
-        self.channel = None
+        self._closeNclear_connNchan_whatever()
 
         logger.info('arupy is started.')
         while self.is_working.is_set():
@@ -181,17 +193,7 @@ class Arupy(object):
         if self.is_working.isSet():
             self.is_working.clear()
 
-        try:
-            self.channel.close()
-            logger.info("close channel succeeded")
-        except:
-            pass
-
-        try:
-            self.connection.close()
-            logger.info("close pika connection succeeded")
-        except:
-            pass
+        self._closeNclear_connNchan_whatever()
 
 
 class ArupyConsumer(object):
