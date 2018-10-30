@@ -40,7 +40,6 @@ class Arupy(object):
         self.channel = None
 
     def start(self):
-        print("run arupy")
         self._mainthread = threading.Thread(name='arupy-main', target=self.run)
         self._mainthread.daemon = True
         self._mainthread.start()
