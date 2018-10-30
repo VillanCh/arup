@@ -54,10 +54,17 @@ class Arupy(object):
             logger.warn("the Arupy is running already.")
             return
 
+        if self.channel:
+            self.channel.close()
+        if self.connection:
+            self.connection.close()
+
         self.connection = None
+        self.channel = None
 
         logger.info('arupy is started.')
         while self.is_working.is_set():
+            # setting for connection
             try:
                 if not self.connection:
                     self.connection = pika.BlockingConnection(self.pika_params)
@@ -68,10 +75,12 @@ class Arupy(object):
                 time.sleep(3)
                 continue
 
+            # setting for channel
             try:
-                self.channel = self.connection.channel()
-                self.channel.basic_qos(prefetch_count=1)
-                logger.info('arupy created a channel and set the qos to 1.')
+                if not self.channel:
+                    self.channel = self.connection.channel()
+                    self.channel.basic_qos(prefetch_count=1)
+                    logger.info('arupy created a channel and set the qos to 1.')
             except Exception as e:
                 logger.warn("create channel failed. retry 3s later: {}".format(e))
                 if self.connection:
@@ -84,10 +93,12 @@ class Arupy(object):
                     time.sleep(3)
                 continue
 
+            # initial_consumer
             try:
-                logger.info("initializing consumers")
-                self.initial_consumers()
-                logger.info('init consumers succeeded.')
+                if self.consumers:
+                    logger.info("initializing consumers")
+                    self.initial_consumers()
+                    logger.info('init consumers succeeded.')
             except Exception:
                 logger.warn("errors in initial consumer: {}".format(
                     traceback.format_exc()
@@ -99,7 +110,6 @@ class Arupy(object):
             try:
                 self.channel.start_consuming()
                 time.sleep(3)
-                break
             except Exception:
                 logger.warn("unexpect exit when consuming. {}".format(traceback.format_exc()))
                 time.sleep(3)
@@ -117,7 +127,8 @@ class Arupy(object):
                 if issubclass(consumer, ArupyConsumer):
                     consumer = consumer(app=self, **kwargs)
             except Exception:
-                raise TypeError("consumer should be subclass/subinstance of ArupyConsumer but {}".format(type(consumer)))
+                raise TypeError(
+                    "consumer should be subclass/subinstance of ArupyConsumer but {}".format(type(consumer)))
 
         if consumer.queue_name not in self.consumers:
             logger.info('consumer: {} is added.'.format(consumer))
