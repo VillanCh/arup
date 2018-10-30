@@ -18,12 +18,12 @@ class ArupyError(Exception):
     pass
 
 
-class Arupy(threading.Thread):
+class Arupy(object):
     """"""
 
     def __init__(self, config="config.yml"):
         """Constructor"""
-        threading.Thread.__init__(self, name="arupy-main")
+        self._mainthread: threading.Thread = None
         self.daemon = True
 
         if isinstance(config, str) and os.path.exists(config):
@@ -38,10 +38,26 @@ class Arupy(threading.Thread):
         self.consumers = {}
         self.connection = None
 
+    def start(self):
+        print("run arupy")
+        self._mainthread = threading.Thread(name='arupy-main', target=self.run)
+        self._mainthread.daemon = True
+        self._mainthread.start()
+
+    def join(self, timeout=None):
+        return self._mainthread.join(timeout)
+
     def run(self):
-        self.is_working.set()
+        if not self.is_working.is_set():
+            self.is_working.set()
+        else:
+            logger.warn("the Arupy is running already.")
+            return
+
+        self.connection = None
+
         logger.info('arupy is started.')
-        while self.is_working.isSet():
+        while self.is_working.is_set():
             try:
                 if not self.connection:
                     self.connection = pika.BlockingConnection(self.pika_params)
@@ -82,7 +98,7 @@ class Arupy(threading.Thread):
 
             try:
                 self.channel.start_consuming()
-                self.connection.sleep(3)
+                time.sleep(3)
                 break
             except Exception:
                 logger.warn("unexpect exit when consuming. {}".format(traceback.format_exc()))
@@ -106,6 +122,18 @@ class Arupy(threading.Thread):
         if consumer.queue_name not in self.consumers:
             logger.info('consumer: {} is added.'.format(consumer))
             self.consumers[consumer.queue_name] = consumer
+
+            if self.is_working.is_set():
+                logger.info("reseting Arupy...")
+                self.stop()
+
+                logger.info("waiting for the mainthread stopped.")
+                self.join()
+
+                logger.info("restart Arupy")
+                self.start()
+            else:
+                logger.info("the Arupy is not running. just pass.")
         else:
             raise ValueError("the queue_name: {} is existed in consumers")
 
