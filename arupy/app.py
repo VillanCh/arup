@@ -151,13 +151,13 @@ class Arupy(object):
                 logger.info("reseting Arupy...")
                 self.stop()
 
-                logger.info("waiting for the mainthread stopped.")
+                logger.debug("waiting for the mainthread stopped.")
                 self.join()
 
-                logger.info("restart Arupy")
+                logger.debug("restart Arupy")
                 self.start()
             else:
-                logger.info("the Arupy is not running. just pass.")
+                logger.debug("the Arupy is not running. no need to reset Arupy.")
         else:
             raise ValueError("the queue_name: {} is existed in consumers")
 
