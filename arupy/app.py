@@ -78,6 +78,7 @@ class Arupy(object):
         logger.info('arupy is started.')
         while self.is_working.is_set():
             # setting for connection
+            logger.info("Arupy main loop is running")
             try:
                 if not self.connection:
                     self.connection = pika.BlockingConnection(self.pika_params)
@@ -177,7 +178,10 @@ class Arupy(object):
 
     def serve_until_no_consumers(self):
         while self.consumers:
-            self.is_working.wait(1)
+            try:
+                self.connection.sleep(1)
+            except:
+                time.sleep(1)
 
     def remove_consumer(self, qname):
         self.channel.basic_cancel(consumer_tag=qname)
