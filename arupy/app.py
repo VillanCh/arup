@@ -118,6 +118,7 @@ class Arupy(object):
                     traceback.format_exc()
                 ))
                 self.connection = None
+                self.channel = None
                 time.sleep(3)
                 # raise ArupyError()
 
@@ -128,6 +129,7 @@ class Arupy(object):
                 logger.warn("unexpect exit when consuming. {}".format(traceback.format_exc()))
                 time.sleep(3)
                 self.connection = None
+                self.channel = None
                 continue
 
         self.is_working.clear()
