@@ -40,6 +40,7 @@ class Arupy(object):
         self.consumers = {}
         self.connection = None
         self.channel = None
+        self.timers = []
 
     def start(self):
         self._mainthread = threading.Thread(name='arupy-main', target=self.run)
@@ -74,6 +75,10 @@ class Arupy(object):
             return
 
         self._closeNclear_connNchan_whatever()
+
+        # start timers
+        for timer in self.timers:
+            timer.start()
 
         logger.info('arupy is started.')
         while self.is_working.is_set():
@@ -134,6 +139,12 @@ class Arupy(object):
 
         self.is_working.clear()
         logger.info("Arupy is shutdown normally.")
+
+    def add_timer(self, timer: threading.Timer):
+        if not isinstance(timer, threading.Timer):
+            raise TypeError("timer is not instance of threading.Timer.")
+        timer.daemon = True
+        self.timers.append(timer)
 
     def add_consumer(self, consumer, **kwargs):
         if isinstance(consumer, ArupyConsumer):
