@@ -40,7 +40,9 @@ class RpcTest(unittest.TestCase):
         self.assertIn("testme", _global_check)
         self.assertEqual("test", result.result)
 
-        app.stop()
+        time.sleep(2)
+
+        # app.stop()
 
 
 if __name__ == "__main__":

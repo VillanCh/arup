@@ -20,6 +20,7 @@ setup(
         "pyyaml",
         "pika",
         "colorama",
+        "pydantic",
     ],
     packages=find_packages(),
     zip_safe=False,

@@ -14,7 +14,7 @@ class PublisherTestCase(unittest.TestCase):
 
         # non-existed exchange will raise 404.
         start = time.time()
-        publisher.publish("tasssksys", "asdfasdf", "body", retry_times=3)
+        publisher.publish("asdasdfasdfaqwerqwerqwer23", "asdfasdf", "body", retry_times=3)
         end = time.time()
 
         self.assertTrue(end - start >= 3)

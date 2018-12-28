@@ -2,9 +2,12 @@
 # coding:utf-8
 import json
 import os
+import typing
 import threading
 import time
+import uuid
 import traceback
+from pydantic import BaseModel
 
 import pika
 from pika.adapters.blocking_connection import BlockingChannel, BlockingConnection
@@ -19,8 +22,7 @@ class ArupyError(Exception):
     """"""
     pass
 
-
-class Arupy(object):
+class ArupyOld(object):
     """"""
 
     def __init__(self, config="config.yml"):
@@ -214,19 +216,212 @@ class Arupy(object):
         self._closeNclear_connNchan_whatever()
 
 
+class ConsumerModel(BaseModel):
+    consumer: typing.Any
+    id: str
+
+
+class Arupy(object):
+
+    def __init__(self, config="config.yml"):
+        """Constructor"""
+        self._mainthread: threading.Thread = threading.Thread(target=self.run)
+        self._mainthread.daemon = True
+
+        if isinstance(config, str) and os.path.exists(config):
+            self.pika_params = config_utils.parse_mq_parameters_from_file(config)
+        elif isinstance(config, pika.ConnectionParameters):
+            self.pika_params = config
+        elif isinstance(config, dict):
+            self.pika_params = config_utils.parse_mq_parameters_from_dict(config)
+        else:
+            raise ValueError("Config: {} cannot be parsed".format(config))
+        self.is_working = threading.Event()
+        self.consumers: typing.Dict[str, ConsumerModel] = {}
+        self.timers: typing.List[typing.Any] = []
+
+    def start(self):
+        self._mainthread.start()
+
+    def join(self, timeout=None):
+        self._mainthread.join(timeout)
+
+    def run(self):
+        self.is_working.set()
+        while self.is_working.is_set():
+            self.initial_consumers()
+            time.sleep(1)
+
+    def add_consumer(self, consumer, key: str = None):
+        if isinstance(consumer, ArupyConsumer):
+            consumer.bind_app(app=self)
+        elif issubclass(consumer, ArupyConsumer):
+            consumer = consumer(app=self)
+        else:
+            raise TypeError(
+                "consumer should be subclass/instance of ArupyConsumer. got: {}".format(
+                    type(consumer)
+                )
+            )
+
+        mod = ConsumerModel(
+            id=key or consumer.queue_name,
+            consumer=consumer
+        )
+        if mod.id in self.consumers:
+            raise ValueError("id: {} is existed in Arupy.consumers".format(
+                mod.id
+            ))
+        self.consumers[mod.id] = mod
+
+    def add_timer(self, timer: threading.Timer):
+        if not isinstance(timer, threading.Timer):
+            raise TypeError("timer is not instance of threading.Timer.")
+        timer.daemon = True
+        self.timers.append(timer)
+
+    def new_publisher(self):
+        return ArupyPublisher(self.pika_params)
+
+    def new_safe_publisher(self, delivery_confirm=False):
+        return ArupySafePublisher(self.pika_params, delivery_confirm)
+
+    def initial_consumers(self):
+        for timer_base in list(self.timers):
+            timer: threading.Timer = timer_base
+            if not timer.is_alive():
+                timer.start()
+            else:
+                self.timers.remove(timer)
+
+        for consumer_base in self.consumers.values():
+            consumer: ArupyConsumer = consumer_base.consumer
+            if not consumer.is_working.is_set():
+                consumer.start()
+
+    def serve_until_no_consumers(self):
+        while len(self.consumers) > 0:
+            for consumer_base in list(self.consumers.values()):
+                consumer: ArupyConsumer = consumer_base.consumer
+                if not consumer.is_working:
+                    self.consumers.pop(consumer_base.id, 0)
+            time.sleep(1)
+
+    def remove_consumer(self, id):
+        consumer_base: ConsumerModel = self.consumers.pop(id, 0)
+        if not consumer_base:
+            pass
+
+        consumer: ArupyConsumer = consumer_base.consumer
+        consumer.stop()
+
+    def stop(self):
+        self.is_working.clear()
+
+        self._mainthread.join()
+
+        for consumer in self.consumers.values():
+            ins: ArupyConsumer = consumer.consumer
+            ins.stop()
+
+        self.consumers.clear()
+
+
 class ArupyConsumer(object):
     """"""
 
     queue_name = "default"
 
-    def __init__(self, app: Arupy = None):
+    def __init__(self, app: Arupy= None):
         """Constructor"""
-        self.app = app
+        self.app: Arupy = app
+        self.connection_params: pika.ConnectionParameters = app.pika_params
+        self.connection: pika.BlockingConnection = None
+        self.channel: BlockingChannel = None
+        self.consuming_tag: str= str(uuid.uuid4())
+
+        self.is_working = threading.Event()
+
+        self._main_thread = threading.Thread(target=self._run, )
+        self._main_thread.daemon = True
+
+    def start(self):
+        self._main_thread.start()
+
+    def join(self, seconds=None):
+        self._main_thread.join(timeout=seconds)
+
+    def stop(self):
+        self.is_working.clear()
+        try:
+            if self.channel and self.consuming_tag:
+                self.channel.stop_consuming(self.consuming_tag)
+        except Exception:
+            pass
+
+        # self._reset_connection_and_channel()
+
+        self._main_thread.join()
+
+    def _reset_connection_and_channel(self):
+        try:
+            if self.channel:
+                self.channel.close()
+        except Exception:
+            pass
+        finally:
+            self.channel = None
+
+        try:
+            if self.connection:
+                self.connection.close()
+        except Exception:
+            pass
+        finally:
+            self.connection = None
+
+    def _run(self):
+        first = True
+        self.is_working.set()
+        while self.is_working.is_set():
+            self._reset_connection_and_channel()
+
+            if not first:
+                logger.info("retrying to connect mq.")
+
+            try:
+                self.connection = pika.BlockingConnection(self.connection_params)
+            except Exception as e:
+                logger.error(e)
+                continue
+
+            try:
+                self.channel: BlockingChannel = self.connection.channel()
+                self.channel.basic_qos(prefetch_count=1)
+            except Exception as e:
+                logger.error(e)
+                continue
+
+            try:
+                self.on_channel_created(channel=self.channel)
+                self.channel.basic_consume(
+                    self.handle, self.queue_name,
+                    consumer_tag=self.consuming_tag
+                )
+            except Exception as e:
+                logger.error(e)
+                continue
+
+            try:
+                self.channel.start_consuming()
+            except Exception as e:
+                logger.error(e)
+                continue
 
     def bind_app(self, app: Arupy):
         self.app = app
 
-    def on_channel_created(self, channel):
+    def on_channel_created(self, channel: BlockingChannel):
         pass
 
     def handle(self, channel, methods, props, body: bytes):
@@ -297,7 +492,8 @@ class ArupySafePublisher(object):
                     self._reset_by_exception(e)
         return False
 
-    def publish_json(self, exchange, routing_key, obj, properties=None, mandatory=False, immediate=False, retry_times=5, **kwargs):
+    def publish_json(self, exchange, routing_key, obj, properties=None, mandatory=False, immediate=False, retry_times=5,
+                     **kwargs):
         body = json.dumps(obj, **kwargs)
         return self.publish(
             exchange, routing_key, body, properties, mandatory, immediate, retry_times

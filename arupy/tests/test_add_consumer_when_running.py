@@ -83,10 +83,10 @@ class AppTestCase(unittest.TestCase):
         print("preparing to remove Consumers")
         time.sleep(1)
 
-        ap.remove_consumer(ConsumerAfter.queue_name)
-        ap.remove_consumer(Consumer.queue_name)
+        # ap.remove_consumer(ConsumerAfter.queue_name)
+        # ap.remove_consumer(Consumer.queue_name)
 
-        ap.serve_until_no_consumers()
+        # ap.serve_until_no_consumers()
 
 
 if __name__ == '__main__':
