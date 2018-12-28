@@ -24,6 +24,7 @@ class A(ArupyConsumer):
         print(body)
         channel.basic_ack(methods.delivery_tag)
         _check["a"] += 1
+        time.sleep(3)
 
 
 class B(ArupyConsumer):
@@ -60,6 +61,15 @@ class MultiConsumerCase(unittest.TestCase):
         self.assertGreaterEqual(_check["a"], 1)
         self.assertGreaterEqual(_check["b"], 1)
 
+        publisher.publish_json("test", "testa", {"key": "testa"})
+        publisher.publish_json("test", "testb", {"key": "testb"})
+
+        time.sleep(1)
         print('prepare to stop')
+        self.assertGreaterEqual(_check["a"], 1)
+        self.assertGreaterEqual(_check["b"], 2)
+
+        time.sleep(3)
+        self.assertGreaterEqual(_check["a"], 2)
 
         # main.stop()
