@@ -9,6 +9,8 @@ import uuid
 import traceback
 from pydantic import BaseModel
 
+from eterna.recordings import ServiceRecording
+
 import pika
 from pika.adapters.blocking_connection import BlockingChannel, BlockingConnection
 
